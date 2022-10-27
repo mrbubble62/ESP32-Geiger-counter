@@ -26,3 +26,5 @@ Geiger Counter
 MQTT to homeassistant every 10 seconds cpm, uSv/H, msV/y
 
 Readings posted to Safecast.org every five minutes
+
+![Front](GC-front.jpg)
