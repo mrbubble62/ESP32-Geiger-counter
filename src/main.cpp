@@ -670,7 +670,7 @@ String getLocalTimeStampString() {
 
 void SafeCast(){
   if(WiFi.isConnected()){
-    WiFiClientSecure client;
+    WiFiClientSecure SCclient;
     DynamicJsonDocument jsondoc(300);
     String ISODate=getLocalTimeStampString(); 
     char post[100];
@@ -688,37 +688,40 @@ void SafeCast(){
     jsondoc["longitude"]=SECRET_LON;
     serializeJson(jsondoc,serverResponse);
     serverResponse += "<br/>";
-    client.setInsecure();
-    if(ISODate.startsWith("20") && jsondoc["value"]>0 && SENDDATA && client.connect(SC_HOST,443)){
-       client.println(post);
-       client.println("Connection: close");
-       client.print("Content-Length: ");
-       client.println(measureJson(jsondoc));
-       client.println("Content-Type: application/json");
-       client.print("Host: ");
-       client.println(SC_HOST);
+    SCclient.setInsecure();
+    if(ISODate.startsWith("20") && jsondoc["value"]>0 && SENDDATA && SCclient.connect(SC_HOST,443)){
+       SCclient.println(post);
+       SCclient.println("Connection: close");
+       SCclient.print("Content-Length: ");
+       SCclient.println(measureJson(jsondoc));
+       SCclient.println("Content-Type: application/json");
+       SCclient.print("Host: ");
+       SCclient.println(SC_HOST);
        // Terminate headers with a blank line
-       client.println();
-       serializeJson(jsondoc, client);
+       SCclient.println();
+       serializeJson(jsondoc, SCclient);
        // Get Client Response
        unsigned long timeout = millis();
-       while (client.available() == 0){
+       while (SCclient.available() == 0){
          if (millis() - timeout > 3000){
-           client.stop();
+           SCclient.stop();
            serverResponse += "Error Safecast client timeout<br/>";
            break;
          }
        }
-       while(client.available()){
-         serverResponse += client.readStringUntil('\r'); //.replace("\r","<br/>"
+       while(SCclient.available()){
+         serverResponse += SCclient.readStringUntil('\r'); //.replace("\r","<br/>"
        } 
-       client.stop();
+       SCclient.stop();
        serverResponse += "<br/>";
 
      }
      else
      {
-       serverResponse += "Error Cannot connect to the Safecast host<br/>";
+        if(SENDDATA)
+          serverResponse += "Error Cannot connect to the Safecast host<br/>";
+        else
+          serverResponse += "Safecast DISABLED<br/>";   
      }
   }
 }
@@ -726,13 +729,13 @@ void SafeCast(){
 void RadMon(){
   // https://radmon.org/radmon.php?function=submit&user=youruser&password=yourpassword&value=20&unit=CPM
   if(WiFi.isConnected()){
-    WiFiClientSecure client;
-    client.setInsecure();
-    if(CPM>0 && SENDDATA && client.connect("radmon.org",443)){
+    WiFiClientSecure RMclient;
+    RMclient.setInsecure();
+    if(CPM>0 && SENDDATA && RMclient.connect("radmon.org",443)){
       // Send a GET request to a web page hosted by the server.
-      client.print("GET radmon.php?function=submit&user=youruser&password=yourpassword&value=");
-      client.print(CPM);
-      client.print("&unit=CPM HTTP/1.1\r\nHost: radmon.org\r\nConnection: close\r\n\r\n");
+      RMclient.print("GET radmon.php?function=submit&user=youruser&password=yourpassword&value=");
+      RMclient.print(CPM);
+      RMclient.print("&unit=CPM HTTP/1.1\r\nHost: radmon.org\r\nConnection: close\r\n\r\n");
     }
   }
 }
@@ -1012,8 +1015,8 @@ void IRAM_ATTR loop() {
         //ntp
         //timeClient.update();
         // mqtt connected
-        if(ConnectMQTT()){
-            SafeCast();
+        SafeCast();      
+        if(ConnectMQTT()){            
             publishState();
         }
       }
