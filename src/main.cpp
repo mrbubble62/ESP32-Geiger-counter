@@ -138,6 +138,7 @@ uint8_t intensity = 127;   // Default value for the LED intensity
 uint32_t delt_t = 0;  // 1000 ms loop
 uint32_t elapsed = 0;
 uint16_t slowloop=240; // 5 minute counter
+uint64_t elapsedtime=0; // seconds since last reset
 
 
 //tick pulse out duration
@@ -557,6 +558,10 @@ void publishState(){
   client.publish("homeassistant/sensor/geiger/state/abri", msg,true);
   snprintf (msg, MSG_BUFFER_SIZE, "{\"Bright\": %d}", bright);
   client.publish("homeassistant/sensor/geiger/state/bright", msg,true);
+  snprintf (msg, MSG_BUFFER_SIZE, "{\"Mem\": %d}", ESP.getFreeHeap());
+  client.publish("homeassistant/sensor/geiger/state/mem", msg,true);
+  snprintf (msg, MSG_BUFFER_SIZE, "{\"Elapsed\": %ju}", elapsedtime);
+  client.publish("homeassistant/sensor/geiger/state/elapsed_s", msg,true);
 }
 
 void SavePrefs(){
@@ -845,6 +850,13 @@ void handle_OnConnect() {
   server.send(200, "text/html", SendHTML()); 
 }
 
+void handle_OnReset() {
+  server.send(200,"text/plain","ok");
+  delay(2000);
+  ESP.restart();
+}
+
+
 void handle_NotFound(){
   server.send(404, "text/plain", "Not found");
 }
@@ -931,8 +943,10 @@ void setup() {
   server.on("/", handle_OnConnect);
   server.on("/senddata", handle_OnSendData);
   server.on("/display", handle_OnDisplay);
+  server.on("/reset", HTTP_POST, handle_OnReset);
   server.onNotFound(handle_NotFound);
   server.begin();
+  elapsedtime=0;
 
   // testing cpu load
   //xTaskCreatePinnedToCore(id, "id", 4096, NULL, 0, NULL, 0);
@@ -968,6 +982,7 @@ void IRAM_ATTR loop() {
   delt_t = millis() - elapsed;
   if (delt_t > 1000) {
 	  elapsed = millis(); 
+    elapsedtime++;
     cps = cpscount;
     //calculate CPM;  cpm is sum of cps
     cpsbuff.push(cps);
